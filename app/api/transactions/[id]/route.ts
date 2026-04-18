@@ -7,7 +7,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params
   const body = await request.json()
 
-  const { type, client, category, amount, date, notes } = body
+  const { type, client, category, amount, date, notes, attachment_url, attachment_name, attachment_size, attachment_type } = body
 
   if (!type || !client || !category || !amount || !date) {
     return NextResponse.json(
@@ -25,7 +25,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase
     .from('transactions')
-    .update({ type, client, category, amount, date, notes: notes ?? null })
+    .update({ 
+      type, 
+      client, 
+      category, 
+      amount, 
+      date, 
+      notes: notes ?? null,
+      attachment_url: attachment_url ?? null,
+      attachment_name: attachment_name ?? null,
+      attachment_size: attachment_size ?? null,
+      attachment_type: attachment_type ?? null,
+    })
     .eq('id', id)
     .select()
     .single()

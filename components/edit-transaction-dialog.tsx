@@ -32,6 +32,7 @@ import type { Transaction } from '@/lib/data'
 import { useUpdateTransactionMutation } from '@/lib/services/api'
 import { CategoryCombobox } from '@/components/category-combobox'
 import { CustomerCombobox } from '@/components/customer-combobox'
+import { AttachmentUploader } from '@/components/attachment-uploader'
 
 interface EditTransactionDialogProps {
   transaction: Transaction | null
@@ -50,6 +51,12 @@ export function EditTransactionDialog({
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [notes, setNotes] = useState('')
+  const [attachment, setAttachment] = useState<{
+    url: string | null
+    name: string | null
+    size: number | null
+    type: string | null
+  } | null>(null)
 
   const [updateTransaction, { isLoading, isError, error, reset }] =
     useUpdateTransactionMutation()
@@ -63,6 +70,12 @@ export function EditTransactionDialog({
       setAmount(String(transaction.amount))
       setDate(parseISO(transaction.date))
       setNotes(transaction.notes ?? '')
+      setAttachment({
+        url: transaction.attachment_url ?? null,
+        name: transaction.attachment_name ?? null,
+        size: transaction.attachment_size ?? null,
+        type: transaction.attachment_type ?? null,
+      })
       reset()
     }
   }, [transaction, open, reset])
@@ -85,6 +98,10 @@ export function EditTransactionDialog({
         amount: parseFloat(amount),
         date: date ? format(date, 'yyyy-MM-dd') : transaction.date,
         notes: notes || undefined,
+        attachment_url: attachment?.url || null,
+        attachment_name: attachment?.name || null,
+        attachment_size: attachment?.size || null,
+        attachment_type: attachment?.type || null,
       }).unwrap()
       onOpenChange(false)
     } catch {
@@ -94,13 +111,13 @@ export function EditTransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-0 p-0">
-        <DialogHeader className="border-b border-border/40 px-6 py-4">
+      <DialogContent className="max-w-lg gap-0 p-0 max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="border-b border-border/40 px-6 py-4 shrink-0">
           <DialogTitle className="text-base font-semibold">Edit Transaction</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="space-y-4 px-6 py-5 overflow-y-auto flex-1">
             {isError && (
               <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -203,9 +220,17 @@ export function EditTransactionDialog({
                 className="border-border/60 bg-muted/30 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
               />
             </div>
+
+            {/* Attachment */}
+            <AttachmentUploader
+              transactionId={transaction?.id}
+              existingAttachment={attachment}
+              onAttachmentChange={setAttachment}
+              disabled={isLoading}
+            />
           </div>
 
-          <DialogFooter className="border-t border-border/40 px-6 py-4">
+          <DialogFooter className="border-t border-border/40 px-6 py-4 shrink-0">
             <Button
               type="button"
               variant="outline"

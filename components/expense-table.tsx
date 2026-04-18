@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -11,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetTransactionsQuery, type TransactionFilter } from '@/lib/services/api'
 import { fadeInUp, tableRow } from '@/lib/animations'
@@ -26,13 +29,32 @@ const formatDate = (dateString: string) => {
 
 interface ExpenseTableProps {
   filterParams?: TransactionFilter
+  pageSize?: number
 }
 
-export function ExpenseTable({ filterParams }: ExpenseTableProps) {
+export function ExpenseTable({ filterParams, pageSize = 20 }: ExpenseTableProps) {
   const { data: transactions, isLoading, isError } = useGetTransactionsQuery(filterParams)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const expenseData = transactions?.filter((t) => t.type === 'expense') ?? []
   const totalExpenses = expenseData.reduce((sum, entry) => sum + entry.amount, 0)
+
+  // Pagination
+  const totalPages = Math.ceil(expenseData.length / pageSize)
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return expenseData.slice(start, start + pageSize)
+  }, [expenseData, currentPage, pageSize])
+
+  const handlePrevPage = () => setCurrentPage((p) => Math.max(1, p - 1))
+  const handleNextPage = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
+
+  // Reset to page 1 when data changes
+  useMemo(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [totalPages, currentPage])
 
   return (
     <motion.div
@@ -46,7 +68,11 @@ export function ExpenseTable({ filterParams }: ExpenseTableProps) {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">Expense Entries</CardTitle>
-                <p className="mt-0.5 text-xs text-muted-foreground">All recorded expense transactions</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {expenseData.length > 0
+                    ? `${expenseData.length} expense transaction${expenseData.length === 1 ? '' : 's'}`
+                    : 'All recorded expense transactions'}
+                </p>
               </div>
               <motion.div
                 className="text-right"
@@ -99,7 +125,7 @@ export function ExpenseTable({ filterParams }: ExpenseTableProps) {
                     </TableRow>
                   ) : (
                     <>
-                      {expenseData.map((entry, index) => (
+                      {paginatedData.map((entry, index) => (
                         <motion.tr
                           key={entry.id}
                           className="border-b border-border/40 transition-colors duration-200 hover:bg-destructive/5"
@@ -136,6 +162,40 @@ export function ExpenseTable({ filterParams }: ExpenseTableProps) {
               </Table>
             </div>
           </CardContent>
+
+          {/* Pagination footer */}
+          {expenseData.length > pageSize && (
+            <CardFooter className="flex items-center justify-between border-t border-border/40 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, expenseData.length)} of {expenseData.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-xs font-medium">{currentPage}</span>
+                  <span className="text-xs text-muted-foreground">of</span>
+                  <span className="text-xs font-medium">{totalPages}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardFooter>
+          )}
         </Card>
       </motion.div>
     </motion.div>

@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const startDate = searchParams.get('startDate')
   const endDate = searchParams.get('endDate')
+  const limit = searchParams.get('limit')
+  const cursor = searchParams.get('cursor') // ISO timestamp for cursor-based pagination
 
   let query = supabase
     .from('transactions')
@@ -14,6 +16,15 @@ export async function GET(request: NextRequest) {
 
   if (startDate) query = query.gte('date', startDate)
   if (endDate) query = query.lte('date', endDate)
+  
+  // Cursor-based pagination: fetch records older than cursor
+  if (cursor) {
+    query = query.lt('created_at', cursor)
+  }
+
+  // Apply limit (default 50, max 100)
+  const pageSize = limit ? Math.min(parseInt(limit, 10), 100) : 50
+  query = query.limit(pageSize)
 
   const { data, error } = await query
 
@@ -24,13 +35,24 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  return NextResponse.json(data)
+  // Return data with pagination metadata
+  const hasMore = data.length === pageSize
+  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].created_at : null
+
+  return NextResponse.json({
+    data,
+    pagination: {
+      hasMore,
+      nextCursor,
+      count: data.length,
+    },
+  })
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
 
-  const { type, client, category, amount, date, notes } = body
+  const { type, client, category, amount, date, notes, attachment_url, attachment_name, attachment_size, attachment_type } = body
 
   if (!type || !client || !category || !amount || !date) {
     return NextResponse.json(
@@ -48,7 +70,18 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('transactions')
-    .insert([{ type, client, category, amount, date, notes: notes ?? null }])
+    .insert([{ 
+      type, 
+      client, 
+      category, 
+      amount, 
+      date, 
+      notes: notes ?? null,
+      attachment_url: attachment_url ?? null,
+      attachment_name: attachment_name ?? null,
+      attachment_size: attachment_size ?? null,
+      attachment_type: attachment_type ?? null,
+    }])
     .select()
     .single()
 

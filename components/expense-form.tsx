@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { CalendarIcon, Minus, Check, Loader2, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
@@ -17,9 +17,10 @@ import {
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
-import { useAddTransactionMutation } from '@/lib/services/api'
+import { useAddTransactionMutation, useUpdateTransactionMutation } from '@/lib/services/api'
 import { CustomerCombobox } from '@/components/customer-combobox'
 import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations'
+import { uploadReceipt, validateFile } from '@/lib/storage'
 
 export function ExpenseForm() {
   const [date, setDate] = useState<Date>()
@@ -28,8 +29,12 @@ export function ExpenseForm() {
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [addTransaction, { isLoading: isSubmitting, isError, error }] = useAddTransactionMutation()
+  const [updateTransaction] = useUpdateTransactionMutation()
 
   const resetForm = () => {
     setVendor('')
@@ -37,12 +42,33 @@ export function ExpenseForm() {
     setAmount('')
     setDate(undefined)
     setNotes('')
+    setSelectedFile(null)
+    setUploadError(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadError(null)
+    const validation = validateFile(file)
+    if (!validation.valid) {
+      setUploadError(validation.error || 'Invalid file')
+      setSelectedFile(null)
+      return
+    }
+
+    setSelectedFile(file)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await addTransaction({
+      // Step 1: Create transaction
+      const transaction = await addTransaction({
         type: 'expense',
         client: vendor,
         category,
@@ -50,6 +76,33 @@ export function ExpenseForm() {
         date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         notes: notes || undefined,
       }).unwrap()
+
+      // Step 2: Upload attachment if file is selected
+      if (selectedFile && transaction.id) {
+        try {
+          const uploadResult = await uploadReceipt(transaction.id, selectedFile)
+          
+          // Step 3: Update transaction with attachment metadata
+          await updateTransaction({
+            id: transaction.id,
+            type: transaction.type,
+            client: transaction.client,
+            category: transaction.category,
+            amount: transaction.amount,
+            date: transaction.date,
+            notes: transaction.notes,
+            attachment_url: uploadResult.path,
+            attachment_name: uploadResult.name,
+            attachment_size: uploadResult.size,
+            attachment_type: uploadResult.type,
+          }).unwrap()
+        } catch (uploadErr) {
+          // Transaction created but upload failed - show warning but don't fail completely
+          console.error('Attachment upload failed:', uploadErr)
+          setUploadError(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload attachment')
+        }
+      }
+
       resetForm()
       setIsSuccess(true)
       setTimeout(() => setIsSuccess(false), 2000)
@@ -88,6 +141,14 @@ export function ExpenseForm() {
                 <span>
                   {(error as { data?: { message?: string } })?.data?.message ??
                     'Failed to add expense. Please try again.'}
+                </span>
+              </div>
+            )}
+            {uploadError && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-orange-500/30 bg-orange-50 px-4 py-3 text-sm text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Transaction created but attachment upload failed: {uploadError}
                 </span>
               </div>
             )}
@@ -135,6 +196,7 @@ export function ExpenseForm() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        type="button"
                         variant="outline"
                         className={cn(
                           'h-9 w-full justify-start border-border/60 bg-muted/30 text-left text-sm font-normal transition-all duration-200 hover:bg-muted/50 focus:ring-2 focus:ring-destructive/30',
@@ -167,6 +229,78 @@ export function ExpenseForm() {
                   className="border-border/60 bg-muted/30 text-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:border-destructive/50"
                 />
               </motion.div>
+              
+              {/* Attachment Upload */}
+              <motion.div className="space-y-2" variants={staggerItem}>
+                <Label htmlFor="receipt" className="text-xs font-medium text-muted-foreground">
+                  Receipt / Invoice (Optional)
+                </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="receipt"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="receipt"
+                      className={cn(
+                        'flex-1 cursor-pointer rounded-lg border-2 border-dashed border-border/60 bg-muted/30 px-4 py-3 text-center text-sm transition-colors hover:border-primary/50 hover:bg-muted/50',
+                        selectedFile && 'border-primary/50 bg-primary/5'
+                      )}
+                    >
+                      {selectedFile ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-lg">📎</span>
+                          <div className="flex flex-col items-start">
+                            <div className="flex items-center gap-2">
+                              <span className="text-foreground font-medium">{selectedFile.name}</span>
+                              <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                                Ready to upload
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {(selectedFile.size / 1024).toFixed(1)} KB • Uploads when you click Submit
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-muted-foreground">
+                            Click to select file (not uploaded until you submit form)
+                          </span>
+                        </div>
+                      )}
+                    </label>
+                    {selectedFile && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null)
+                          setUploadError(null)
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = ''
+                          }
+                        }}
+                        className="h-9 text-xs"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedFile 
+                      ? '✓ File ready. Click "Add Expense" below to save transaction and upload file.'
+                      : 'Supported: Images, PDF, DOC, XLS (max 10MB)'}
+                  </p>
+                </div>
+              </motion.div>
+
               <motion.div variants={staggerItem}>
                 <motion.div
                   whileHover={{ scale: 1.01 }}
@@ -184,7 +318,7 @@ export function ExpenseForm() {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Adding...
+                        {selectedFile ? 'Adding & Uploading...' : 'Adding...'}
                       </>
                     ) : isSuccess ? (
                       <>

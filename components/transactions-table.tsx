@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Pencil, Search, Trash2, X } from 'lucide-react'
+import { ArrowRight, Pencil, Search, Trash2, X, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -36,10 +36,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { EditTransactionDialog } from '@/components/edit-transaction-dialog'
 import { useGetTransactionsQuery, useDeleteTransactionMutation } from '@/lib/services/api'
+import { useInfiniteTransactions } from '@/lib/use-infinite-transactions'
+import { useIntersectionObserver } from '@/lib/use-intersection-observer'
 import type { TransactionFilter } from '@/lib/services/api'
 import type { Transaction } from '@/lib/data'
 import { fadeInUp, tableRow } from '@/lib/animations'
 import { formatCurrency } from '@/lib/format-currency'
+import { getSignedUrl } from '@/lib/storage'
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', {
@@ -58,6 +61,10 @@ interface TransactionsTableProps {
   /** Cap the number of rows displayed (shows "View all" footer link when set).
    *  Also hides the search / filter bar. */
   limit?: number
+  /** Enable infinite scroll pagination (default: false for preview mode, true for full table) */
+  enableInfiniteScroll?: boolean
+  /** Page size for infinite scroll (default: 50) */
+  pageSize?: number
 }
 
 export function TransactionsTable({
@@ -66,11 +73,33 @@ export function TransactionsTable({
   title = 'Recent Transactions',
   description = 'Your latest financial activities',
   limit,
+  enableInfiniteScroll,
+  pageSize = 50,
 }: TransactionsTableProps) {
-  const { data: apiTransactions, isLoading, isError } = useGetTransactionsQuery(
+  // Use infinite scroll for full tables (when limit is undefined)
+  const useInfiniteScrolling = enableInfiniteScroll ?? (limit === undefined)
+  
+  // Infinite scroll data fetching
+  const {
+    transactions: infiniteTransactions,
+    isLoading: infiniteLoading,
+    isFetchingMore,
+    isError: infiniteError,
+    hasMore: infiniteHasMore,
+    loadMore,
+    totalLoaded,
+  } = useInfiniteTransactions({
     filterParams,
-    { skip: propTransactions !== undefined }
+    pageSize,
+    enabled: useInfiniteScrolling && propTransactions === undefined,
+  })
+
+  // Regular query for limited/preview tables or when prop transactions provided
+  const { data: apiTransactions, isLoading: regularLoading, isError: regularError } = useGetTransactionsQuery(
+    filterParams,
+    { skip: propTransactions !== undefined || useInfiniteScrolling }
   )
+  
   const [deleteTransaction, { isLoading: isDeleting }] = useDeleteTransactionMutation()
 
   const [editTarget, setEditTarget] = useState<Transaction | null>(null)
@@ -83,8 +112,21 @@ export function TransactionsTable({
   const [typeFilter, setTypeFilter]   = useState<TypeFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
 
-  const allTransactions = propTransactions ?? apiTransactions ?? []
-  const showFilters     = limit === undefined   // hide on limited / preview tables
+  // Select data source based on mode
+  const allTransactions = propTransactions 
+    ?? (useInfiniteScrolling ? infiniteTransactions : apiTransactions) 
+    ?? []
+  
+  const isLoading = useInfiniteScrolling ? infiniteLoading : regularLoading
+  const isError = useInfiniteScrolling ? infiniteError : regularError
+  
+  const showFilters = limit === undefined   // hide on limited / preview tables
+
+  // Intersection observer for infinite scroll
+  const loadMoreTriggerRef = useIntersectionObserver<HTMLDivElement>({
+    onIntersect: loadMore,
+    enabled: useInfiniteScrolling && infiniteHasMore && !isFetchingMore && !isLoading,
+  })
 
   // Unique sorted categories from loaded data
   const categories = useMemo(
@@ -117,7 +159,7 @@ export function TransactionsTable({
   }
 
   // Apply limit only on preview tables (no search in that case)
-  const hasMore    = limit !== undefined && allTransactions.length > limit
+  const hasMorePreview = limit !== undefined && allTransactions.length > limit
   const displayRows = limit !== undefined
     ? allTransactions.slice(0, limit)
     : filteredTransactions
@@ -129,6 +171,26 @@ export function TransactionsTable({
     await deleteTransaction(deleteTarget.id)
     setDeleteOpen(false)
     setDeleteTarget(null)
+  }
+
+  const handleAttachmentClick = async (transaction: Transaction) => {
+    if (!transaction.attachment_url) return
+    
+    try {
+      // Extract path from URL and get signed URL
+      const pathMatch = transaction.attachment_url.match(/transaction-receipts\/(.+)$/)
+      if (pathMatch?.[1]) {
+        const signedUrl = await getSignedUrl(pathMatch[1])
+        window.open(signedUrl, '_blank', 'noopener,noreferrer')
+      } else {
+        // If attachment_url is already just the path (not full URL)
+        const signedUrl = await getSignedUrl(transaction.attachment_url)
+        window.open(signedUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      console.error('Failed to open attachment:', err)
+      alert('Failed to open attachment. Please try editing the transaction to view it.')
+    }
   }
 
   return (
@@ -144,6 +206,8 @@ export function TransactionsTable({
                   {showFilters && !isLoading
                     ? hasActiveFilters
                       ? `${filteredTransactions.length} of ${allTransactions.length} transactions`
+                      : useInfiniteScrolling && infiniteHasMore
+                      ? `${totalLoaded} transactions loaded`
                       : `${allTransactions.length} transaction${allTransactions.length === 1 ? '' : 's'}`
                     : description}
                 </p>
@@ -311,7 +375,23 @@ export function TransactionsTable({
                           </TableCell>
                           <TableCell className="py-3 text-sm">{transaction.category}</TableCell>
                           <TableCell className="py-3 text-sm text-muted-foreground">
-                            {transaction.client}
+                            <div className="flex items-center gap-2">
+                              <span>{transaction.client}</span>
+                              {transaction.attachment_url && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleAttachmentClick(transaction)
+                                  }}
+                                  className="inline-flex items-center text-base transition-all hover:scale-125 focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 hover:bg-primary/10 cursor-pointer"
+                                  title={`View attachment: ${transaction.attachment_name || 'file'}`}
+                                  aria-label="View attachment"
+                                >
+                                  📎
+                                </button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell
                             className={`py-3 text-right text-sm font-semibold ${
@@ -350,9 +430,26 @@ export function TransactionsTable({
                 </TableBody>
               </Table>
             </div>
+
+            {/* ── Infinite scroll loader / trigger ────────────────── */}
+            {useInfiniteScrolling && !isError && (
+              <div ref={loadMoreTriggerRef} className="mt-4 flex justify-center">
+                {isFetchingMore && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading more transactions...
+                  </div>
+                )}
+                {!infiniteHasMore && allTransactions.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    All transactions loaded ({totalLoaded} total)
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
 
-          {hasMore && (
+          {hasMorePreview && (
             <CardFooter className="border-t border-border/40 px-5 py-3">
               <Link
                 href="/transactions"

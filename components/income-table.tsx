@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -11,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetTransactionsQuery, type TransactionFilter } from '@/lib/services/api'
 import { fadeInUp, tableRow } from '@/lib/animations'
@@ -26,13 +29,32 @@ const formatDate = (dateString: string) => {
 
 interface IncomeTableProps {
   filterParams?: TransactionFilter
+  pageSize?: number
 }
 
-export function IncomeTable({ filterParams }: IncomeTableProps) {
+export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
   const { data: transactions, isLoading, isError } = useGetTransactionsQuery(filterParams)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const incomeData = transactions?.filter((t) => t.type === 'income') ?? []
   const totalIncome = incomeData.reduce((sum, entry) => sum + entry.amount, 0)
+
+  // Pagination
+  const totalPages = Math.ceil(incomeData.length / pageSize)
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return incomeData.slice(start, start + pageSize)
+  }, [incomeData, currentPage, pageSize])
+
+  const handlePrevPage = () => setCurrentPage((p) => Math.max(1, p - 1))
+  const handleNextPage = () => setCurrentPage((p) => Math.min(totalPages, p + 1))
+
+  // Reset to page 1 when data changes
+  useMemo(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [totalPages, currentPage])
 
   return (
     <motion.div
@@ -46,7 +68,11 @@ export function IncomeTable({ filterParams }: IncomeTableProps) {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">Income Entries</CardTitle>
-                <p className="mt-0.5 text-xs text-muted-foreground">All recorded income transactions</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {incomeData.length > 0
+                    ? `${incomeData.length} income transaction${incomeData.length === 1 ? '' : 's'}`
+                    : 'All recorded income transactions'}
+                </p>
               </div>
               <motion.div
                 className="text-right"
@@ -99,7 +125,7 @@ export function IncomeTable({ filterParams }: IncomeTableProps) {
                     </TableRow>
                   ) : (
                     <>
-                      {incomeData.map((entry, index) => (
+                      {paginatedData.map((entry, index) => (
                         <motion.tr
                           key={entry.id}
                           className="border-b border-border/40 transition-colors duration-200 hover:bg-success/5"
@@ -136,6 +162,40 @@ export function IncomeTable({ filterParams }: IncomeTableProps) {
               </Table>
             </div>
           </CardContent>
+
+          {/* Pagination footer */}
+          {incomeData.length > pageSize && (
+            <CardFooter className="flex items-center justify-between border-t border-border/40 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, incomeData.length)} of {incomeData.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-xs font-medium">{currentPage}</span>
+                  <span className="text-xs text-muted-foreground">of</span>
+                  <span className="text-xs font-medium">{totalPages}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardFooter>
+          )}
         </Card>
       </motion.div>
     </motion.div>

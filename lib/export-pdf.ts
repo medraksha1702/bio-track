@@ -2,7 +2,6 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Transaction } from '@/lib/data'
 import type { TransactionSummary } from '@/lib/services/api'
-import { formatCurrency } from '@/lib/format-currency'
 
 const BRAND = '#4F46E5'   // indigo-600 – matches the primary hue
 const MUTED  = '#6B7280'  // gray-500
@@ -13,6 +12,21 @@ function formatDate(iso: string): string {
     month: 'short',
     day: 'numeric',
   })
+}
+
+/**
+ * Format currency for PDF export (plain text without special symbols)
+ * Using INR with Indian numbering: Rs 1,19,700
+ * Note: jsPDF fonts don't always render ₹ symbol correctly, so we use "Rs" prefix
+ */
+function formatCurrencyForPdf(value: number): string {
+  const formatted = new Intl.NumberFormat('en-IN', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value)
+  
+  return `Rs ${formatted}`
 }
 
 export interface PdfExportOptions {
@@ -67,9 +81,9 @@ export function exportToPdf(opts: PdfExportOptions): void {
   const boxW = (pageW - margin * 2 - 9) / 4  // 4 cards, 3×3mm gaps
 
   const summaryItems = [
-    { label: 'Total Income',   value: summary ? formatCurrency(summary.totalIncome)  : '—', color: '#10B981' },
-    { label: 'Total Expenses', value: summary ? formatCurrency(summary.totalExpense) : '—', color: '#EF4444' },
-    { label: 'Net Profit',     value: summary ? formatCurrency(summary.profit)        : '—', color: '#4F46E5' },
+    { label: 'Total Income',   value: summary ? formatCurrencyForPdf(summary.totalIncome)  : '—', color: '#10B981' },
+    { label: 'Total Expenses', value: summary ? formatCurrencyForPdf(summary.totalExpense) : '—', color: '#EF4444' },
+    { label: 'Net Profit',     value: summary ? formatCurrencyForPdf(summary.profit)        : '—', color: '#4F46E5' },
     {
       label: 'Profit Margin',
       value: summary && summary.totalIncome > 0
@@ -123,7 +137,7 @@ export function exportToPdf(opts: PdfExportOptions): void {
     t.type === 'income' ? 'Income' : 'Expense',
     t.category,
     t.client,
-    `${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}`,
+    `${t.type === 'income' ? '+' : '-'} ${formatCurrencyForPdf(t.amount)}`,
     t.notes ?? '',
   ])
 

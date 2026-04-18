@@ -8,6 +8,10 @@ export type Transaction = {
   amount: number
   client: string
   notes?: string
+  attachment_url?: string | null
+  attachment_name?: string | null
+  attachment_size?: number | null
+  attachment_type?: string | null
 }
 
 export type IncomeEntry = {

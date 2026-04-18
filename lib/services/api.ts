@@ -10,6 +10,15 @@ export type TransactionSummary = {
   profit: number
 }
 
+export type PaginatedTransactionsResponse = {
+  data: Transaction[]
+  pagination: {
+    hasMore: boolean
+    nextCursor: string | null
+    count: number
+  }
+}
+
 export type NewTransaction = {
   type: 'income' | 'expense'
   client: string
@@ -17,6 +26,10 @@ export type NewTransaction = {
   amount: number
   date: string
   notes?: string
+  attachment_url?: string | null
+  attachment_name?: string | null
+  attachment_size?: number | null
+  attachment_type?: string | null
 }
 
 export type UpdateTransaction = NewTransaction & { id: string }
@@ -43,6 +56,18 @@ function buildQuery(base: string, filter?: TransactionFilter): string {
   return `${base}?${sp.toString()}`
 }
 
+function buildPaginatedQuery(
+  base: string,
+  filter?: TransactionFilter & { cursor?: string; limit?: number }
+): string {
+  const sp = new URLSearchParams()
+  if (filter?.startDate) sp.set('startDate', filter.startDate)
+  if (filter?.endDate) sp.set('endDate', filter.endDate)
+  if (filter?.cursor) sp.set('cursor', filter.cursor)
+  if (filter?.limit) sp.set('limit', filter.limit.toString())
+  return sp.toString() ? `${base}?${sp.toString()}` : base
+}
+
 export const bioTrackApi = createApi({
   reducerPath: 'bioTrackApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
@@ -50,6 +75,22 @@ export const bioTrackApi = createApi({
   endpoints: (builder) => ({
     getTransactions: builder.query<Transaction[], TransactionFilter | undefined>({
       query: (filter) => buildQuery('/transactions', filter),
+      providesTags: ['Transaction'],
+      // Transform paginated response to just return data array for backwards compatibility
+      transformResponse: (response: Transaction[] | PaginatedTransactionsResponse) => {
+        // If response has pagination structure, extract data
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data
+        }
+        // Otherwise return as-is (backwards compatible)
+        return response as Transaction[]
+      },
+    }),
+    getPaginatedTransactions: builder.query<
+      PaginatedTransactionsResponse,
+      TransactionFilter & { cursor?: string; limit?: number } | undefined
+    >({
+      query: (filter) => buildPaginatedQuery('/transactions', filter),
       providesTags: ['Transaction'],
     }),
     addTransaction: builder.mutation<Transaction, NewTransaction>({
@@ -120,6 +161,7 @@ export const bioTrackApi = createApi({
 
 export const {
   useGetTransactionsQuery,
+  useGetPaginatedTransactionsQuery,
   useAddTransactionMutation,
   useUpdateTransactionMutation,
   useDeleteTransactionMutation,
