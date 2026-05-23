@@ -53,11 +53,11 @@ export function exportToPdf(opts: PdfExportOptions): void {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
   doc.setTextColor('#FFFFFF')
-  doc.text('BioTrack', margin, 12)
+  doc.text('k² Biomedical', margin, 12)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.text('Biomedical Finance Tracking', margin + 36, 12)
+  doc.text('Finance Tracking', margin + 36, 12)
 
   // Title row
   doc.setFont('helvetica', 'bold')

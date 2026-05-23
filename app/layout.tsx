@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: 'BioTrack - Biomedical Finance Tracking',
+  title: 'k² Biomedical - Finance Tracking',
   description: 'Track income, expenses, profit, and financial analytics for biomedical businesses',
   generator: 'v0.app',
   icons: {

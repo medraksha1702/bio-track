@@ -64,9 +64,9 @@ export function AppSidebar({ userName, userEmail, userInitials }: AppSidebarProp
           </motion.div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
-              BioTrack
+              k² Biomedical
             </span>
-            <span className="text-[11px] text-muted-foreground">Biomedical Finance</span>
+            <span className="text-[11px] text-muted-foreground">Finance Tracking</span>
           </div>
         </Link>
       </SidebarHeader>
