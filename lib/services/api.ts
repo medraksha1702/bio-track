@@ -68,10 +68,65 @@ function buildPaginatedQuery(
   return sp.toString() ? `${base}?${sp.toString()}` : base
 }
 
+export type InvoiceItem = {
+  id: string
+  invoice_id: string
+  description: string
+  quantity: number
+  unit_price: number
+  amount: number
+  created_at: string
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
+
+export type Invoice = {
+  id: string
+  invoice_number: string
+  client_name: string
+  status: InvoiceStatus
+  issue_date: string
+  due_date: string
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+  notes?: string | null
+  transaction_id?: string | null
+  created_at: string
+  invoice_items?: InvoiceItem[]
+}
+
+export type NewInvoiceItem = {
+  description: string
+  quantity: number
+  unit_price: number
+  amount: number
+}
+
+export type NewInvoice = {
+  client_name: string
+  status: InvoiceStatus
+  issue_date: string
+  due_date: string
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+  notes?: string
+  transaction_id?: string | null
+  items: NewInvoiceItem[]
+}
+
+export type UpdateInvoice = Partial<Omit<NewInvoice, 'items'>> & {
+  id: string
+  items?: NewInvoiceItem[]
+}
+
 export const bioTrackApi = createApi({
   reducerPath: 'bioTrackApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Transaction', 'Summary', 'Category', 'Customer'],
+  tagTypes: ['Transaction', 'Summary', 'Category', 'Customer', 'Invoice'],
   endpoints: (builder) => ({
     getTransactions: builder.query<Transaction[], TransactionFilter | undefined>({
       query: (filter) => buildQuery('/transactions', filter),
@@ -156,6 +211,28 @@ export const bioTrackApi = createApi({
       query: (id) => ({ url: `/customers/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Customer'],
     }),
+
+    // ── Invoices ─────────────────────────────────────────────────────────────
+    getInvoices: builder.query<Invoice[], { status?: InvoiceStatus } | undefined>({
+      query: (filter) => filter?.status ? `/invoices?status=${filter.status}` : '/invoices',
+      providesTags: ['Invoice'],
+    }),
+    getInvoice: builder.query<Invoice, string>({
+      query: (id) => `/invoices/${id}`,
+      providesTags: ['Invoice'],
+    }),
+    addInvoice: builder.mutation<Invoice, NewInvoice>({
+      query: (body) => ({ url: '/invoices', method: 'POST', body }),
+      invalidatesTags: ['Invoice'],
+    }),
+    updateInvoice: builder.mutation<Invoice, UpdateInvoice>({
+      query: ({ id, ...body }) => ({ url: `/invoices/${id}`, method: 'PATCH', body }),
+      invalidatesTags: ['Invoice'],
+    }),
+    deleteInvoice: builder.mutation<void, string>({
+      query: (id) => ({ url: `/invoices/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Invoice'],
+    }),
   }),
 })
 
@@ -174,4 +251,9 @@ export const {
   useAddCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
+  useGetInvoicesQuery,
+  useGetInvoiceQuery,
+  useAddInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useDeleteInvoiceMutation,
 } = bioTrackApi

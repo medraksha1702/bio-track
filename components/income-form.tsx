@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarIcon, Plus, Check, Loader2, AlertCircle } from 'lucide-react'
+import { CalendarIcon, Plus, Check, Loader2, AlertCircle, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useAddTransactionMutation, useUpdateTransactionMutation } from '@/lib/services/api'
 import { CustomerCombobox } from '@/components/customer-combobox'
@@ -135,6 +136,22 @@ export function IncomeForm() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Billing hint */}
+            <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-3.5 py-3">
+              <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Need to send a bill first?</span>{' '}
+                Use{' '}
+                <Link
+                  href="/billing"
+                  className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  Billing → Create Invoice
+                </Link>{' '}
+                instead. Marking the invoice as <span className="font-medium text-foreground">Paid</span> will record income automatically.
+              </p>
+            </div>
+
             {isError && (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

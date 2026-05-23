@@ -82,6 +82,13 @@ async function main() {
 
   await runSQL('Create transactions table + RLS policy', schemaSQL)
 
+  const billingSQL = fs.readFileSync(
+    path.resolve(process.cwd(), 'supabase/billing-schema.sql'),
+    'utf-8'
+  )
+
+  await runSQL('Create invoices + invoice_items tables + RLS policies', billingSQL)
+
   if (withSeed) {
     const seedSQL = fs.readFileSync(
       path.resolve(process.cwd(), 'supabase/seed.sql'),

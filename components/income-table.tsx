@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   Table,
@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useGetTransactionsQuery, type TransactionFilter } from '@/lib/services/api'
+import { CreateInvoiceDialog } from '@/components/create-invoice-dialog'
 import { fadeInUp, tableRow } from '@/lib/animations'
 import { formatCurrency } from '@/lib/format-currency'
 
@@ -104,6 +105,7 @@ export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
                     <TableHead className="h-10 text-xs font-medium text-muted-foreground">Category</TableHead>
                     <TableHead className="h-10 text-xs font-medium text-muted-foreground">Notes</TableHead>
                     <TableHead className="h-10 text-right text-xs font-medium text-muted-foreground">Amount</TableHead>
+                    <TableHead className="h-10 w-10 text-xs font-medium text-muted-foreground" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -115,11 +117,12 @@ export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
                         <TableCell className="py-3"><Skeleton className="h-5 w-28 rounded-full" /></TableCell>
                         <TableCell className="py-3"><Skeleton className="h-4 w-40" /></TableCell>
                         <TableCell className="py-3 text-right"><Skeleton className="ml-auto h-4 w-20" /></TableCell>
+                        <TableCell className="py-3"><Skeleton className="h-7 w-7 rounded" /></TableCell>
                       </TableRow>
                     ))
                   ) : incomeData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                         No income entries found.
                       </TableCell>
                     </TableRow>
@@ -139,20 +142,34 @@ export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
                           </TableCell>
                           <TableCell className="py-3 text-sm">{entry.client}</TableCell>
                           <TableCell className="py-3">
-                            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.15 }}>
-                              <Badge
-                                variant="secondary"
-                                className="border-success/20 bg-success/10 text-[11px] font-medium text-success hover:bg-success/15"
-                              >
-                                {entry.category}
-                              </Badge>
-                            </motion.div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.15 }}>
+                                <Badge
+                                  variant="secondary"
+                                  className="border-success/20 bg-success/10 text-[11px] font-medium text-success hover:bg-success/15"
+                                >
+                                  {entry.category}
+                                </Badge>
+                              </motion.div>
+                              {entry.notes?.startsWith('Invoice:') && (
+                                <Badge
+                                  variant="outline"
+                                  className="gap-1 border-primary/20 bg-primary/5 text-[10px] font-medium text-primary"
+                                >
+                                  <Receipt className="h-2.5 w-2.5" />
+                                  From Invoice
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate py-3 text-sm text-muted-foreground">
                             {entry.notes ?? '—'}
                           </TableCell>
                           <TableCell className="py-3 text-right text-sm font-semibold text-success">
                             +{formatCurrency(entry.amount)}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <CreateInvoiceDialog transaction={entry} />
                           </TableCell>
                         </motion.tr>
                       ))}
