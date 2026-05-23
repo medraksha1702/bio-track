@@ -39,7 +39,7 @@ export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'this-year', label: 'This Year' },
 ]
 
-export const DEFAULT_FILTER: DateFilter = { preset: 'all' }
+export const DEFAULT_FILTER: DateFilter = { preset: 'this-month' }
 
 /** Returns the active date range label for display in UI */
 export function getFilterLabel(filter: DateFilter): string {

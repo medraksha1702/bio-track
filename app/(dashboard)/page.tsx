@@ -68,7 +68,7 @@ export default function DashboardPage() {
         description="Financial overview for your biomedical organisation"
       />
 
-      <main className="flex-1 p-5 md:p-8">
+      <main className="flex-1 p-6 md:p-8">
         <motion.div
           className="mx-auto max-w-7xl space-y-6"
           variants={staggerContainer}
@@ -85,6 +85,11 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">
                 Showing data for:{' '}
                 <span className="font-medium text-foreground">{filterLabel}</span>
+                {filterParams?.startDate && filterParams?.endDate && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({format(new Date(filterParams.startDate), 'MMM d')} – {format(new Date(filterParams.endDate), 'MMM d, yyyy')})
+                  </span>
+                )}
               </p>
             </div>
 

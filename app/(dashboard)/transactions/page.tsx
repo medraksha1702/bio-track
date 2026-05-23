@@ -12,12 +12,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, ArrowLeftRight, Upload } from 'lucide-react'
 import { useGetSummaryQuery } from '@/lib/services/api'
 import { staggerContainer, staggerItem } from '@/lib/animations'
-import { DEFAULT_FILTER, getDateRange, type DateFilter } from '@/lib/date-filters'
+import { DEFAULT_FILTER, getDateRange, getFilterLabel, type DateFilter } from '@/lib/date-filters'
 import { formatCurrency } from '@/lib/format-currency'
 
 export default function TransactionsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_FILTER)
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
+  const filterLabel = getFilterLabel(dateFilter)
   const [importOpen, setImportOpen] = useState(false)
 
   const { data: summary, isLoading } = useGetSummaryQuery(filterParams)
@@ -64,8 +65,17 @@ export default function TransactionsPage() {
         >
           {/* Filter bar + Import button */}
           <motion.div variants={staggerItem} className="flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 space-y-1.5">
               <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
+              <p className="text-xs text-muted-foreground">
+                Showing data for:{' '}
+                <span className="font-medium text-foreground">{filterLabel}</span>
+                {filterParams?.startDate && filterParams?.endDate && (
+                  <span className="ml-1">
+                    ({new Date(filterParams.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(filterParams.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                  </span>
+                )}
+              </p>
             </div>
             <Button
               variant="outline"

@@ -11,15 +11,35 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { InvoiceForm, type InvoiceFormDefaults } from '@/components/invoice-form'
+import { InvoiceStatusBadge } from '@/components/invoice-status-badge'
 import type { Transaction } from '@/lib/data'
+import type { Invoice } from '@/lib/services/api'
 
 interface Props {
   transaction: Transaction
+  existingInvoice?: Invoice
 }
 
-export function CreateInvoiceDialog({ transaction }: Props) {
+export function CreateInvoiceDialog({ transaction, existingInvoice }: Props) {
   const [open, setOpen] = useState(false)
+
+  if (existingInvoice) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex h-7 cursor-default items-center gap-1 rounded px-1">
+            <Receipt className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <InvoiceStatusBadge status={existingInvoice.status} />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          {existingInvoice.invoice_number} · Invoice already created
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
 
   const defaults: InvoiceFormDefaults = {
     client_name: transaction.client,

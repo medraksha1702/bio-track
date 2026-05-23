@@ -27,11 +27,11 @@ export default function BillingPage() {
           </motion.div>
 
           {/* Invoice form + table */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-4">
             <motion.div className="lg:col-span-1" variants={staggerItem}>
               <InvoiceForm />
             </motion.div>
-            <motion.div className="lg:col-span-2" variants={staggerItem}>
+            <motion.div className="lg:col-span-3" variants={staggerItem}>
               <InvoiceTable />
             </motion.div>
           </div>

@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useGetTransactionsQuery, type TransactionFilter } from '@/lib/services/api'
+import { useGetTransactionsQuery, useGetInvoicesQuery, type TransactionFilter } from '@/lib/services/api'
 import { CreateInvoiceDialog } from '@/components/create-invoice-dialog'
 import { fadeInUp, tableRow } from '@/lib/animations'
 import { formatCurrency } from '@/lib/format-currency'
@@ -35,9 +35,16 @@ interface IncomeTableProps {
 
 export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
   const { data: transactions, isLoading, isError } = useGetTransactionsQuery(filterParams)
+  const { data: invoices = [] } = useGetInvoicesQuery(undefined)
   const [currentPage, setCurrentPage] = useState(1)
 
   const incomeData = transactions?.filter((t) => t.type === 'income') ?? []
+
+  const invoiceByTransactionId = useMemo(() => {
+    const map: Record<string, (typeof invoices)[number]> = {}
+    invoices.forEach((inv) => { if (inv.transaction_id) map[inv.transaction_id] = inv })
+    return map
+  }, [invoices])
   const totalIncome = incomeData.reduce((sum, entry) => sum + entry.amount, 0)
 
   // Pagination
@@ -169,7 +176,10 @@ export function IncomeTable({ filterParams, pageSize = 20 }: IncomeTableProps) {
                             +{formatCurrency(entry.amount)}
                           </TableCell>
                           <TableCell className="py-3">
-                            <CreateInvoiceDialog transaction={entry} />
+                            <CreateInvoiceDialog
+                              transaction={entry}
+                              existingInvoice={invoiceByTransactionId[entry.id]}
+                            />
                           </TableCell>
                         </motion.tr>
                       ))}

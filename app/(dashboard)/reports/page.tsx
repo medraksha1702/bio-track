@@ -65,14 +65,23 @@ export default function ReportsPage() {
       />
       <main className="flex-1 p-6 md:p-8">
         <motion.div
-          className="mx-auto max-w-4xl space-y-6"
+          className="mx-auto max-w-7xl space-y-6"
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
         >
           {/* ── Date filter ─────────────────────────────────────────── */}
-          <motion.div variants={staggerItem}>
+          <motion.div variants={staggerItem} className="space-y-1.5">
             <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
+            <p className="text-xs text-muted-foreground">
+              Showing data for:{' '}
+              <span className="font-medium text-foreground">{filterLabel}</span>
+              {filterParams?.startDate && filterParams?.endDate && (
+                <span className="ml-1">
+                  ({new Date(filterParams.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(filterParams.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                </span>
+              )}
+            </p>
           </motion.div>
 
           {/* ── Profit trend chart ──────────────────────────────────── */}
