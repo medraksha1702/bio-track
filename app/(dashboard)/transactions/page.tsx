@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { TransactionsTable } from '@/components/transactions-table'
@@ -12,11 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, ArrowLeftRight, Upload } from 'lucide-react'
 import { useGetSummaryQuery } from '@/lib/services/api'
 import { staggerContainer, staggerItem } from '@/lib/animations'
-import { DEFAULT_FILTER, getDateRange, getFilterLabel, type DateFilter } from '@/lib/date-filters'
+import { getDateRange, getFilterLabel } from '@/lib/date-filters'
+import { useDateFilter } from '@/lib/date-filter-context'
 import { formatCurrency } from '@/lib/format-currency'
 
 export default function TransactionsPage() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_FILTER)
+  const { dateFilter, setDateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
   const [importOpen, setImportOpen] = useState(false)

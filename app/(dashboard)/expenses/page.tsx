@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { ExpenseForm } from '@/components/expense-form'
 import { ExpenseTable } from '@/components/expense-table'
 import { DateRangeFilter } from '@/components/date-range-filter'
 import { staggerContainer, staggerItem } from '@/lib/animations'
-import { DEFAULT_FILTER, getDateRange, getFilterLabel, type DateFilter } from '@/lib/date-filters'
+import { getDateRange, getFilterLabel } from '@/lib/date-filters'
+import { useDateFilter } from '@/lib/date-filter-context'
 
 export default function ExpensesPage() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_FILTER)
+  const { dateFilter, setDateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
 

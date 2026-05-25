@@ -12,10 +12,11 @@ import { FileDown, FileSpreadsheet, FileText, Loader2 } from 'lucide-react'
 import { useGetSummaryQuery, useGetTransactionsQuery } from '@/lib/services/api'
 import { transactionsToCsv, downloadTextFile } from '@/lib/export-csv'
 import { staggerContainer, staggerItem } from '@/lib/animations'
-import { DEFAULT_FILTER, getDateRange, getFilterLabel, type DateFilter } from '@/lib/date-filters'
+import { getDateRange, getFilterLabel } from '@/lib/date-filters'
+import { useDateFilter } from '@/lib/date-filter-context'
 
 export default function ReportsPage() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_FILTER)
+  const { dateFilter, setDateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
 

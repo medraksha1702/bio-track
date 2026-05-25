@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -14,12 +14,13 @@ import { ExpensePieChart } from '@/components/expense-pie-chart'
 import { ProfitChart } from '@/components/profit-chart'
 import { TransactionsTable } from '@/components/transactions-table'
 import { staggerContainer, staggerItem } from '@/lib/animations'
-import { DEFAULT_FILTER, getDateRange, getFilterLabel, type DateFilter } from '@/lib/date-filters'
+import { getDateRange, getFilterLabel } from '@/lib/date-filters'
+import { useDateFilter } from '@/lib/date-filter-context'
 import { useGetTransactionsQuery, useGetSummaryQuery } from '@/lib/services/api'
 import { transactionsToCsv, downloadTextFile } from '@/lib/export-csv'
 
 export default function DashboardPage() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_FILTER)
+  const { dateFilter, setDateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
 

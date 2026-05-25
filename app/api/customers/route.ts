@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { name } = body
+  const { name, contact_number, gst_number, bill_to_address, ship_to_address } = body
 
   if (!name?.trim()) {
     return NextResponse.json({ message: 'name is required' }, { status: 400 })
@@ -21,7 +21,13 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('customers')
-    .insert([{ name: name.trim() }])
+    .insert([{
+      name: name.trim(),
+      contact_number: contact_number?.trim() || null,
+      gst_number: gst_number?.trim() || null,
+      bill_to_address: bill_to_address?.trim() || null,
+      ship_to_address: ship_to_address?.trim() || null,
+    }])
     .select()
     .single()
 

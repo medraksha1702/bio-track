@@ -8,6 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -36,43 +44,146 @@ import {
   type Customer,
 } from '@/lib/services/api'
 
+// ─── Customer Form Dialog ──────────────────────────────────────────────────────
+
+function CustomerFormDialog({
+  customer,
+  isOpen,
+  onOpenChange,
+}: {
+  customer?: Customer
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [updateCustomer, { isLoading: saving }] = useUpdateCustomerMutation()
+  const [addCustomer, { isLoading: adding }] = useAddCustomerMutation()
+  const [formData, setFormData] = useState({
+    name: '',
+    contact_number: '',
+    gst_number: '',
+    bill_to_address: '',
+    ship_to_address: '',
+  })
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (customer) {
+      setFormData({
+        name: customer.name || '',
+        contact_number: customer.contact_number || '',
+        gst_number: customer.gst_number || '',
+        bill_to_address: customer.bill_to_address || '',
+        ship_to_address: customer.ship_to_address || '',
+      })
+    } else {
+      setFormData({
+        name: '',
+        contact_number: '',
+        gst_number: '',
+        bill_to_address: '',
+        ship_to_address: '',
+      })
+    }
+    setError('')
+  }, [customer, isOpen])
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      setError('Name is required')
+      return
+    }
+    setError('')
+    try {
+      if (customer) {
+        await updateCustomer({ id: customer.id, ...formData }).unwrap()
+      } else {
+        await addCustomer(formData).unwrap()
+      }
+      onOpenChange(false)
+    } catch (err: unknown) {
+      const msg = (err as { data?: { message?: string } })?.data?.message ?? 'Failed to save'
+      setError(msg)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{customer ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Name*</label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Customer name"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Contact Number</label>
+            <Input
+              value={formData.contact_number}
+              onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
+              placeholder="+1 (555) 000-0000"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">GST Number</label>
+            <Input
+              value={formData.gst_number}
+              onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
+              placeholder="GST/Tax ID"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Bill To Address</label>
+            <Input
+              value={formData.bill_to_address}
+              onChange={(e) => setFormData({ ...formData, bill_to_address: e.target.value })}
+              placeholder="Billing address"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Ship To Address</label>
+            <Input
+              value={formData.ship_to_address}
+              onChange={(e) => setFormData({ ...formData, ship_to_address: e.target.value })}
+              placeholder="Shipping address"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          {error && (
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {error}
+            </p>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving || adding}>
+            {saving || adding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Single row ────────────────────────────────────────────────────────────────
 
 function CustomerRow({ customer }: { customer: Customer }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(customer.name)
-  const [updateCustomer, { isLoading: saving }] = useUpdateCustomerMutation()
+  const [editOpen, setEditOpen] = useState(false)
   const [deleteCustomer, { isLoading: deleting }] = useDeleteCustomerMutation()
-  const [saveError, setSaveError] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (editing) {
-      setDraft(customer.name)
-      setSaveError('')
-      setTimeout(() => inputRef.current?.focus(), 30)
-    }
-  }, [editing, customer.name])
-
-  const handleSave = async () => {
-    if (!draft.trim() || draft.trim() === customer.name) {
-      setEditing(false)
-      return
-    }
-    setSaveError('')
-    try {
-      await updateCustomer({ id: customer.id, name: draft.trim() }).unwrap()
-      setEditing(false)
-    } catch (err: unknown) {
-      const msg = (err as { data?: { message?: string } })?.data?.message ?? 'Failed to save'
-      setSaveError(msg)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSave()
-    if (e.key === 'Escape') setEditing(false)
-  }
 
   return (
     <motion.div
@@ -83,91 +194,57 @@ function CustomerRow({ customer }: { customer: Customer }) {
       transition={{ duration: 0.15 }}
       className="flex items-center gap-2 rounded-lg border border-border/40 bg-background px-3 py-2 transition-colors hover:bg-muted/30"
     >
-      {editing ? (
-        <div className="flex flex-1 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <Input
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="h-7 flex-1 border-primary/40 text-sm focus-visible:ring-1 focus-visible:ring-primary/40"
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 text-emerald-600 hover:bg-emerald-50"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 text-muted-foreground hover:bg-muted"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          {saveError && (
-            <p className="flex items-center gap-1 text-[11px] text-destructive">
-              <AlertCircle className="h-3 w-3" />
-              {saveError}
-            </p>
-          )}
-        </div>
-      ) : (
-        <>
-          <span className="flex-1 text-sm">{customer.name}</span>
+      <div className="flex-1">
+        <p className="text-sm font-medium">{customer.name}</p>
+        {customer.contact_number && (
+          <p className="text-xs text-muted-foreground">{customer.contact_number}</p>
+        )}
+      </div>
+      <CustomerFormDialog customer={customer} isOpen={editOpen} onOpenChange={setEditOpen} />
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+        onClick={() => setEditOpen(true)}
+        aria-label={`Edit ${customer.name}`}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus:opacity-100"
-            onClick={() => setEditing(true)}
-            aria-label={`Rename ${customer.name}`}
+            className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+            disabled={deleting}
+            aria-label={`Delete ${customer.name}`}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus:opacity-100"
-                disabled={deleting}
-                aria-label={`Delete ${customer.name}`}
-              >
-                {deleting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete customer?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  <strong>&quot;{customer.name}&quot;</strong> will be removed from the list.
-                  Existing transactions are not affected.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => deleteCustomer(customer.id)}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
-      )}
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>&quot;{customer.name}&quot;</strong> will be removed from the list.
+              Existing transactions are not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteCustomer(customer.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   )
 }
@@ -176,24 +253,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
 
 export function CustomersCard() {
   const { data: customers = [], isLoading } = useGetCustomersQuery()
-  const [addCustomer, { isLoading: adding }] = useAddCustomerMutation()
-  const [newName, setNewName] = useState('')
-  const [addError, setAddError] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleAdd = async () => {
-    const name = newName.trim()
-    if (!name) return
-    setAddError('')
-    try {
-      await addCustomer({ name }).unwrap()
-      setNewName('')
-      inputRef.current?.focus()
-    } catch (err: unknown) {
-      const msg = (err as { data?: { message?: string } })?.data?.message ?? 'Failed to add'
-      setAddError(msg)
-    }
-  }
+  const [addOpen, setAddOpen] = useState(false)
 
   return (
     <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
@@ -246,37 +306,11 @@ export function CustomersCard() {
           )}
 
           {/* Add new */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Input
-                ref={inputRef}
-                value={newName}
-                onChange={(e) => { setNewName(e.target.value); setAddError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                placeholder="New customer name…"
-                className="h-9 flex-1 border-border/60 bg-muted/30 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
-              />
-              <Button
-                size="sm"
-                className="h-9 gap-1.5"
-                onClick={handleAdd}
-                disabled={adding || !newName.trim()}
-              >
-                {adding ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" />
-                )}
-                Add
-              </Button>
-            </div>
-            {addError && (
-              <p className="flex items-center gap-1 text-[11px] text-destructive">
-                <AlertCircle className="h-3 w-3" />
-                {addError}
-              </p>
-            )}
-          </div>
+          <CustomerFormDialog isOpen={addOpen} onOpenChange={setAddOpen} />
+          <Button size="sm" className="w-full gap-1.5" onClick={() => setAddOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add Customer
+          </Button>
         </CardContent>
       </Card>
     </motion.div>

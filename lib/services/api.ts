@@ -44,9 +44,30 @@ export type Category = {
 export type NewCategory = { name: string; type: 'income' | 'expense' }
 export type UpdateCategory = { id: string; name: string }
 
-export type Customer = { id: string; name: string; created_at: string }
-export type NewCustomer = { name: string }
-export type UpdateCustomer = { id: string; name: string }
+export type Customer = {
+  id: string
+  name: string
+  contact_number?: string | null
+  gst_number?: string | null
+  bill_to_address?: string | null
+  ship_to_address?: string | null
+  created_at: string
+}
+export type NewCustomer = {
+  name: string
+  contact_number?: string
+  gst_number?: string
+  bill_to_address?: string
+  ship_to_address?: string
+}
+export type UpdateCustomer = {
+  id: string
+  name: string
+  contact_number?: string | null
+  gst_number?: string | null
+  bill_to_address?: string | null
+  ship_to_address?: string | null
+}
 
 function buildQuery(base: string, filter?: TransactionFilter): string {
   if (!filter?.startDate && !filter?.endDate) return base
