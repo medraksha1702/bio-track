@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { ProfitChart } from '@/components/profit-chart'
-import { DateRangeFilter } from '@/components/date-range-filter'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FileDown, FileSpreadsheet, FileText, Loader2 } from 'lucide-react'
@@ -16,7 +15,7 @@ import { getDateRange, getFilterLabel } from '@/lib/date-filters'
 import { useDateFilter } from '@/lib/date-filter-context'
 
 export default function ReportsPage() {
-  const { dateFilter, setDateFilter } = useDateFilter()
+  const { dateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
 
@@ -63,6 +62,7 @@ export default function ReportsPage() {
       <DashboardHeader
         title="Reports"
         description="Profit trends and data exports"
+        showDateFilter
       />
       <main className="flex-1 p-6 md:p-8">
         <motion.div
@@ -71,9 +71,8 @@ export default function ReportsPage() {
           initial="hidden"
           animate="visible"
         >
-          {/* ── Date filter ─────────────────────────────────────────── */}
+          {/* ── Active range caption ─────────────────────────────────── */}
           <motion.div variants={staggerItem} className="space-y-1.5">
-            <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
             <p className="text-xs text-muted-foreground">
               Showing data for:{' '}
               <span className="font-medium text-foreground">{filterLabel}</span>

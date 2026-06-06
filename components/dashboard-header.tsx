@@ -16,15 +16,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DateRangeFilter } from '@/components/date-range-filter'
 import { cn } from '@/lib/utils'
 import { fadeInUp } from '@/lib/animations'
 import { createClient } from '@/lib/supabase/client'
 import { useGetTransactionsQuery } from '@/lib/services/api'
+import { useDateFilter } from '@/lib/date-filter-context'
 import { formatCurrency } from '@/lib/format-currency'
 
 interface DashboardHeaderProps {
   title: string
   description?: string
+  /** Show the global date-range filter before the search input. */
+  showDateFilter?: boolean
 }
 
 function getInitials(raw: string) {
@@ -36,10 +40,11 @@ function getInitials(raw: string) {
     .join('')
 }
 
-export function DashboardHeader({ title, description }: DashboardHeaderProps) {
+export function DashboardHeader({ title, description, showDateFilter }: DashboardHeaderProps) {
   const [initials, setInitials] = useState('··')
   const [fullName, setFullName] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
+  const { dateFilter, setDateFilter } = useDateFilter()
 
   // ── Fetch real user for initials ─────────────────────────────────────────
   useEffect(() => {
@@ -89,6 +94,16 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
+        {/* Global date-range filter */}
+        {showDateFilter && (
+          <DateRangeFilter
+            value={dateFilter}
+            onChange={setDateFilter}
+            align="end"
+            className="hidden sm:inline-flex"
+          />
+        )}
+
         {/* Search */}
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

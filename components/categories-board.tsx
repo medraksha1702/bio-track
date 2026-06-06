@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -20,7 +19,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
-  Tag,
+  TrendingUp,
+  TrendingDown,
   Plus,
   Pencil,
   Trash2,
@@ -36,6 +36,8 @@ import {
   useDeleteCategoryMutation,
   type Category,
 } from '@/lib/services/api'
+import { fadeInUp } from '@/lib/animations'
+import { cn } from '@/lib/utils'
 
 // ─── Single row ────────────────────────────────────────────────────────────────
 
@@ -82,7 +84,7 @@ function CategoryRow({ cat }: { cat: Category }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
-      className="flex items-center gap-2 rounded-lg border border-border/40 bg-background px-3 py-2 transition-colors hover:bg-muted/30"
+      className="group flex items-center gap-2 rounded-lg border border-border/40 bg-background px-3 py-2 transition-colors hover:bg-muted/30"
     >
       {editing ? (
         <div className="flex flex-1 flex-col gap-1">
@@ -173,14 +175,16 @@ function CategoryRow({ cat }: { cat: Category }) {
   )
 }
 
-// ─── Tab panel ─────────────────────────────────────────────────────────────────
+// ─── Column (one per type) ─────────────────────────────────────────────────────
 
-function CategoryTab({ type }: { type: 'income' | 'expense' }) {
+function CategoryColumn({ type }: { type: 'income' | 'expense' }) {
   const { data: categories = [], isLoading } = useGetCategoriesQuery(type)
   const [addCategory, { isLoading: adding }] = useAddCategoryMutation()
   const [newName, setNewName] = useState('')
   const [addError, setAddError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const isIncome = type === 'income'
 
   const handleAdd = async () => {
     const name = newName.trim()
@@ -196,137 +200,118 @@ function CategoryTab({ type }: { type: 'income' | 'expense' }) {
     }
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleAdd()
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2 pt-2">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-3 pt-2">
-      {/* List */}
-      <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
-        <AnimatePresence initial={false}>
-          {categories.length === 0 ? (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-4 text-center text-xs text-muted-foreground"
-            >
-              No {type} categories yet. Add one below.
-            </motion.p>
-          ) : (
-            categories.map((cat) => (
-              <div key={cat.id} className="group">
-                <CategoryRow cat={cat} />
-              </div>
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Add new */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <Input
-            ref={inputRef}
-            value={newName}
-            onChange={(e) => { setNewName(e.target.value); setAddError('') }}
-            onKeyDown={handleKeyDown}
-            placeholder={`New ${type} category…`}
-            className="h-9 flex-1 border-border/60 bg-muted/30 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
-          />
-          <Button
-            size="sm"
-            className="h-9 gap-1.5"
-            onClick={handleAdd}
-            disabled={adding || !newName.trim()}
-          >
-            {adding ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Plus className="h-3.5 w-3.5" />
+    <Card className="border-border/40 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2.5">
+          <div
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-lg',
+              isIncome ? 'bg-success/10' : 'bg-destructive/10',
             )}
-            Add
-          </Button>
+          >
+            {isIncome ? (
+              <TrendingUp className="h-4 w-4 text-success" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-destructive" />
+            )}
+          </div>
+          <div className="flex-1">
+            <CardTitle className="text-base font-semibold">
+              {isIncome ? 'Income' : 'Expense'} Categories
+            </CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Used when recording {type} transactions
+            </p>
+          </div>
+          <Badge
+            variant="secondary"
+            className={cn(
+              'text-xs',
+              isIncome
+                ? 'border-success/20 bg-success/10 text-success'
+                : 'border-destructive/20 bg-destructive/10 text-destructive',
+            )}
+          >
+            {categories.length}
+          </Badge>
         </div>
-        {addError && (
-          <p className="flex items-center gap-1 text-[11px] text-destructive">
-            <AlertCircle className="h-3 w-3" />
-            {addError}
-          </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="max-h-[420px] space-y-1.5 overflow-y-auto pr-1">
+            <AnimatePresence initial={false}>
+              {categories.length === 0 ? (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-6 text-center text-xs text-muted-foreground"
+                >
+                  No {type} categories yet. Add one below.
+                </motion.p>
+              ) : (
+                categories.map((cat) => <CategoryRow key={cat.id} cat={cat} />)
+              )}
+            </AnimatePresence>
+          </div>
         )}
-      </div>
-    </div>
+
+        {/* Add new */}
+        <div className="space-y-1.5 border-t border-border/40 pt-3">
+          <div className="flex items-center gap-2">
+            <Input
+              ref={inputRef}
+              value={newName}
+              onChange={(e) => {
+                setNewName(e.target.value)
+                setAddError('')
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAdd()
+              }}
+              placeholder={`New ${type} category…`}
+              className="h-9 flex-1 border-border/60 bg-muted/30 text-sm focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+            <Button
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={handleAdd}
+              disabled={adding || !newName.trim()}
+            >
+              {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              Add
+            </Button>
+          </div>
+          {addError && (
+            <p className="flex items-center gap-1 text-[11px] text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {addError}
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
-// ─── Card ──────────────────────────────────────────────────────────────────────
+// ─── Board ─────────────────────────────────────────────────────────────────────
 
-export function CategoriesCard() {
-  const { data: allCategories = [] } = useGetCategoriesQuery(undefined)
-  const incomeCount = allCategories.filter((c) => c.type === 'income').length
-  const expenseCount = allCategories.filter((c) => c.type === 'expense').length
-
+export function CategoriesBoard() {
   return (
-    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
-      <Card className="border-border/40 shadow-sm transition-shadow duration-300 hover:shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <motion.div
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            >
-              <Tag className="h-4 w-4 text-primary" />
-            </motion.div>
-            <div className="flex-1">
-              <CardTitle className="text-base font-semibold">Transaction Categories</CardTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Manage the categories available when adding income or expenses
-              </p>
-            </div>
-            <div className="flex gap-1.5">
-              <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
-                {incomeCount} income
-              </Badge>
-              <Badge className="bg-red-100 text-red-700 text-[10px]">
-                {expenseCount} expense
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="income">
-            <TabsList className="h-8 w-full rounded-lg bg-muted/50 p-0.5">
-              <TabsTrigger
-                value="income"
-                className="h-7 flex-1 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                Income
-              </TabsTrigger>
-              <TabsTrigger
-                value="expense"
-                className="h-7 flex-1 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                Expense
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="income">
-              <CategoryTab type="income" />
-            </TabsContent>
-            <TabsContent value="expense">
-              <CategoryTab type="expense" />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+    <motion.div
+      variants={fadeInUp}
+      initial="hidden"
+      animate="visible"
+      className="grid gap-6 lg:grid-cols-2"
+    >
+      <CategoryColumn type="income" />
+      <CategoryColumn type="expense" />
     </motion.div>
   )
 }

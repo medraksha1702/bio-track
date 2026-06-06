@@ -7,7 +7,6 @@ import { format } from 'date-fns'
 import { Plus, FileSpreadsheet, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DashboardHeader } from '@/components/dashboard-header'
-import { DateRangeFilter } from '@/components/date-range-filter'
 import { SummaryCards } from '@/components/summary-cards'
 import { IncomeExpenseChart } from '@/components/income-expense-chart'
 import { ExpensePieChart } from '@/components/expense-pie-chart'
@@ -20,7 +19,7 @@ import { useGetTransactionsQuery, useGetSummaryQuery } from '@/lib/services/api'
 import { transactionsToCsv, downloadTextFile } from '@/lib/export-csv'
 
 export default function DashboardPage() {
-  const { dateFilter, setDateFilter } = useDateFilter()
+  const { dateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
 
@@ -67,6 +66,7 @@ export default function DashboardPage() {
       <DashboardHeader
         title="Dashboard"
         description="Financial overview for your biomedical organisation"
+        showDateFilter
       />
 
       <main className="flex-1 p-6 md:p-8">
@@ -95,7 +95,6 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
               <Button
                 asChild
                 size="sm"

@@ -38,8 +38,6 @@ import {
 import { staggerContainer, staggerItem } from '@/lib/animations'
 import { useGetTransactionsQuery } from '@/lib/services/api'
 import { transactionsToCsv, downloadTextFile } from '@/lib/export-csv'
-import { CategoriesCard } from '@/components/categories-card'
-import { CustomersCard } from '@/components/customers-card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -467,16 +465,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
             </motion.div>
-          </motion.div>
-
-          {/* ── Categories ───────────────────────────────────────────── */}
-          <motion.div variants={staggerItem}>
-            <CategoriesCard />
-          </motion.div>
-
-          {/* ── Customers ────────────────────────────────────────────── */}
-          <motion.div variants={staggerItem}>
-            <CustomersCard />
           </motion.div>
 
           {/* ── Data & Export ─────────────────────────────────────────── */}

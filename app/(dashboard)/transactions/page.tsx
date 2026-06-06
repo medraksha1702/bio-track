@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { TransactionsTable } from '@/components/transactions-table'
-import { DateRangeFilter } from '@/components/date-range-filter'
 import { ImportCsvDialog } from '@/components/import-csv-dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,7 +16,7 @@ import { useDateFilter } from '@/lib/date-filter-context'
 import { formatCurrency } from '@/lib/format-currency'
 
 export default function TransactionsPage() {
-  const { dateFilter, setDateFilter } = useDateFilter()
+  const { dateFilter } = useDateFilter()
   const filterParams = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const filterLabel = getFilterLabel(dateFilter)
   const [importOpen, setImportOpen] = useState(false)
@@ -56,6 +55,7 @@ export default function TransactionsPage() {
       <DashboardHeader
         title="Transactions"
         description="View all financial transactions"
+        showDateFilter
       />
       <main className="flex-1 p-6 md:p-8">
         <motion.div
@@ -67,7 +67,6 @@ export default function TransactionsPage() {
           {/* Filter bar + Import button */}
           <motion.div variants={staggerItem} className="flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
-              <DateRangeFilter value={dateFilter} onChange={setDateFilter} />
               <p className="text-xs text-muted-foreground">
                 Showing data for:{' '}
                 <span className="font-medium text-foreground">{filterLabel}</span>

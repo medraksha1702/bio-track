@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -13,6 +14,9 @@ import {
   Settings,
   LogOut,
   Receipt,
+  ChevronRight,
+  Users,
+  Tags,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -21,10 +25,19 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarFooter,
 } from '@/components/ui/sidebar'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   Tooltip,
   TooltipContent,
@@ -39,7 +52,11 @@ const menuItems = [
   { title: 'Transactions', url: '/transactions',  icon: ArrowLeftRight  },
   { title: 'Billing',      url: '/billing',       icon: Receipt         },
   { title: 'Reports',      url: '/reports',       icon: BarChart3       },
-  { title: 'Settings',     url: '/settings',      icon: Settings        },
+]
+
+const settingsSubItems = [
+  { title: 'Customers',  url: '/settings/customers',  icon: Users },
+  { title: 'Categories', url: '/settings/categories', icon: Tags  },
 ]
 
 interface AppSidebarProps {
@@ -50,6 +67,13 @@ interface AppSidebarProps {
 
 export function AppSidebar({ userName, userEmail, userInitials }: AppSidebarProps) {
   const pathname = usePathname()
+  const isSettingsSection = pathname.startsWith('/settings')
+  const [settingsOpen, setSettingsOpen] = useState(isSettingsSection)
+
+  // Auto-expand the Settings submenu when navigating into any settings route.
+  useEffect(() => {
+    if (isSettingsSection) setSettingsOpen(true)
+  }, [isSettingsSection])
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -130,6 +154,76 @@ export function AppSidebar({ userName, userEmail, userInitials }: AppSidebarProp
                   </motion.div>
                 )
               })}
+
+              {/* ── Settings (with submenu) ──────────────────────────── */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: menuItems.length * 0.05 }}
+              >
+                <Collapsible
+                  open={settingsOpen}
+                  onOpenChange={setSettingsOpen}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === '/settings'}
+                      tooltip="Settings"
+                      className={`h-9 rounded-lg transition-all duration-200 ${
+                        pathname === '/settings'
+                          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                      }`}
+                    >
+                      <Link href="/settings" className="relative flex items-center gap-3">
+                        <AnimatePresence>
+                          {pathname === '/settings' && (
+                            <motion.div
+                              className="absolute -left-3 h-5 w-1 rounded-r-full bg-primary"
+                              layoutId="activeIndicator"
+                              initial={{ opacity: 0, scaleY: 0 }}
+                              animate={{ opacity: 1, scaleY: 1 }}
+                              exit={{ opacity: 0, scaleY: 0 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            />
+                          )}
+                        </AnimatePresence>
+                        <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.15 }}>
+                          <Settings
+                            className={`h-4 w-4 shrink-0 ${pathname === '/settings' ? 'text-primary' : ''}`}
+                          />
+                        </motion.div>
+                        <span className="text-sm">Settings</span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuAction className="text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-90">
+                        <ChevronRight />
+                        <span className="sr-only">Toggle Settings submenu</span>
+                      </SidebarMenuAction>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="mt-1">
+                        {settingsSubItems.map((sub) => (
+                          <SidebarMenuSubItem key={sub.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={pathname === sub.url}
+                            >
+                              <Link href={sub.url}>
+                                <sub.icon className="h-4 w-4 shrink-0" />
+                                <span>{sub.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </motion.div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
